@@ -1,0 +1,82 @@
+#!/usr/bin/python
+import pyaudio
+from math import sin
+import math
+import struct
+import numpy
+
+from PyQt5 import QtWidgets, QtCore, uic
+
+class MainWin(QtWidgets.QMainWindow):
+  def __init__(self, parent=None):
+    super(MainWin, self).__init__(parent)
+    uic.loadUi('ui.ui', self)
+
+  @QtCore.pyqtSlot(int)
+  def on_horizontalSlider_valueChanged(self, v):
+    global f
+    f = v
+
+  @QtCore.pyqtSlot(int)
+  def on_horizontalSlider_2_valueChanged(self, v):
+    global vol
+    vol = v
+  
+  @QtCore.pyqtSlot(bool)
+  def on_btnPause_clicked(self, v):
+    global stream
+    if v: stream.stop_stream()
+    else: stream.start_stream()
+
+import sys
+f = 440.0
+vol = 440.0
+volmax = 1000.0
+
+app=QtWidgets.QApplication(sys.argv)
+w=MainWin()
+w.show()
+
+myt = 0
+def playcb(indata, framecount, timeinfo, status):
+  #print timeinfo, status, framecount
+  global f, vol, w, myt
+  dt = 1/44100.0
+  t0 = timeinfo['output_buffer_dac_time']
+  w.dacOutTime.setText(str(t0))
+  data = [(sin(dt*(t+myt)*f*2*math.pi)*(vol/volmax)) for t in range(framecount)]
+#  print data
+  myt += framecount
+  return (struct.pack('f'*framecount, *data), pyaudio.paContinue)
+
+p = pyaudio.PyAudio()
+
+i = 0
+for i in range(p.get_device_count()):
+  if p.get_device_info_by_index(i)['name'] == 'system':
+    idx = i
+
+stream = p.open(format=pyaudio.paFloat32,
+                channels=1,
+                rate=44100,
+                output=True,
+                output_device_index=idx,
+                stream_callback=playcb)
+
+
+stream.start_stream()
+
+
+sys.exit(app.exec_())
+
+import time
+try:
+  while stream.is_active():
+    time.sleep(0.1)
+except:
+  pass
+
+stream.stop_stream()
+stream.close()
+
+p.terminate()
