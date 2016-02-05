@@ -4,23 +4,36 @@ from math import sin
 import math
 import struct
 import numpy
-
+import os
+os.environ['QT_API'] = 'pyqt5'
 from PyQt5 import QtWidgets, QtCore, uic
+import pyqtgraph as pg
+
 
 class MainWin(QtWidgets.QMainWindow):
   def __init__(self, parent=None):
     super(MainWin, self).__init__(parent)
     uic.loadUi('ui.ui', self)
+    self.p = pg.PlotWidget()
+    self.horizontalLayout_4.addWidget(self.p)
+
+  def lol(self):
+    d = playcb([], 441, {'output_buffer_dac_time':0}, [])
+    d = struct.unpack('f'*441, d[0])
+    self.p.clear()
+    self.p.plot(d)
 
   @QtCore.pyqtSlot(int)
   def on_horizontalSlider_valueChanged(self, v):
     global f
     f = v
+    self.lol()
 
   @QtCore.pyqtSlot(int)
   def on_horizontalSlider_2_valueChanged(self, v):
     global vol
     vol = v
+    self.lol()
   
   @QtCore.pyqtSlot(bool)
   def on_btnPause_clicked(self, v):
@@ -34,9 +47,8 @@ vol = 440.0
 volmax = 1000.0
 
 app=QtWidgets.QApplication(sys.argv)
-w=MainWin()
-w.show()
 
+w=MainWin()
 myt = 0
 def playcb(indata, framecount, timeinfo, status):
   #print timeinfo, status, framecount
@@ -51,6 +63,7 @@ def playcb(indata, framecount, timeinfo, status):
 
 p = pyaudio.PyAudio()
 
+idx=0
 i = 0
 for i in range(p.get_device_count()):
   if p.get_device_info_by_index(i)['name'] == 'system':
@@ -66,6 +79,8 @@ stream = p.open(format=pyaudio.paFloat32,
 
 stream.start_stream()
 
+w.show()
+w.lol()
 
 sys.exit(app.exec_())
 
